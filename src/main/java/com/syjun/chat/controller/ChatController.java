@@ -16,7 +16,7 @@ public class ChatController {
     /**
      * 查询两个用户之间的聊天记录
      * @param userId   当前用户ID
-     * @param friendId 好友ID
+     * @param friendId 好友IDtest
      */
     @GetMapping("/history")
     public ApiResponse<List<ChatMessageResponse>> getChatHistory(
