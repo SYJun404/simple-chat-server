@@ -1,8 +1,8 @@
 package com.syjun.chat.dto;
 
 import com.syjun.chat.entity.ChatMessage;
-import lombok.*;
 import java.time.LocalDateTime;
+import lombok.*;
 
 /** 聊天消息响应 */
 @Getter
@@ -21,12 +21,12 @@ public class ChatMessageResponse {
 
     public static ChatMessageResponse from(ChatMessage msg) {
         return ChatMessageResponse.builder()
-                .id(msg.getId())
-                .fromUserId(msg.getFromUserId())
-                .toUserId(msg.getToUserId())
-                .content(msg.getContent())
-                .sendTime(msg.getSendTime())
-                .isRead(msg.getIsRead())
-                .build();
+            .id(msg.getId())
+            .fromUserId(msg.getFromUserId())
+            .toUserId(msg.getToUserId())
+            .content(msg.getContent())
+            .sendTime(msg.getSendTime())
+            .isRead(msg.getIsRead())
+            .build();
     }
 }

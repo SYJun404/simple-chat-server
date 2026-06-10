@@ -19,10 +19,9 @@ public class ChatController {
      */
     @GetMapping("/history")
     public ApiResponse<List<ChatMessageResponse>> getChatHistory(
-        @RequestParam Long userId,
-        @RequestParam Long friendId
+        @RequestParam Long userId
     ) {
-        return chatMessageService.getChatHistory(userId, friendId);
+        return chatMessageService.getChatHistory(userId);
     }
 
     /**

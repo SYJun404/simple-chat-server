@@ -1,6 +1,7 @@
 package com.syjun.chat.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.util.Map;
@@ -22,9 +23,9 @@ public class WebSocketSessionManager {
     private final Map<Long, WebSocketSession> sessionMap =
         new ConcurrentHashMap<>();
 
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(
-        new JavaTimeModule()
-    );
+    private final ObjectMapper objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); // 禁止把 `LocalDateTime` 序列化成数组
 
     /**
      * 注册会话。同一个用户只保留最新连接，旧连接会被关闭。

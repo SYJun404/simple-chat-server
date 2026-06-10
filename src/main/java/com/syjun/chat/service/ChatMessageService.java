@@ -18,13 +18,9 @@ public class ChatMessageService {
     /**
      * 查询两个用户之间的聊天记录
      */
-    public ApiResponse<List<ChatMessageResponse>> getChatHistory(
-        Long user1,
-        Long user2
-    ) {
+    public ApiResponse<List<ChatMessageResponse>> getChatHistory(Long userId) {
         List<ChatMessage> messages = chatMessageRepository.findChatHistory(
-            user1,
-            user2
+            userId
         );
 
         List<ChatMessageResponse> list = messages
