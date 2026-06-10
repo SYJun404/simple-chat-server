@@ -2,9 +2,10 @@ package com.syjun.chat.controller;
 
 import com.syjun.chat.dto.*;
 import com.syjun.chat.service.ChatMessageService;
+import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -15,13 +16,22 @@ public class ChatController {
 
     /**
      * 查询两个用户之间的聊天记录
-     * @param userId   当前用户ID
-     * @param friendId 好友IDtest
      */
     @GetMapping("/history")
     public ApiResponse<List<ChatMessageResponse>> getChatHistory(
-            @RequestParam Long userId,
-            @RequestParam Long friendId) {
+        @RequestParam Long userId,
+        @RequestParam Long friendId
+    ) {
         return chatMessageService.getChatHistory(userId, friendId);
+    }
+
+    /**
+     * 发送聊天消息: 存库 + WebSocket 推送
+     */
+    @PostMapping("/send")
+    public ApiResponse<ChatMessageResponse> sendMessage(
+        @Valid @RequestBody SendMessageRequest request
+    ) {
+        return chatMessageService.sendMessage(request);
     }
 }

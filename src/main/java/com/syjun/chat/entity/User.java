@@ -32,4 +32,8 @@ public class User {
     @Column(nullable = false)
     @Builder.Default
     private Integer status = 0;
+
+    /** 头像 */
+    @Column(length = 255)
+    private String avatar;
 }

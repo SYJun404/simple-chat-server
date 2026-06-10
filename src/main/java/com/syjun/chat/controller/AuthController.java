@@ -15,13 +15,25 @@ public class AuthController {
 
     /** 注册 */
     @PostMapping("/register")
-    public ApiResponse<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse<UserResponse> register(
+        @Valid @RequestBody RegisterRequest request
+    ) {
         return userService.register(request);
     }
 
     /** 登录 */
     @PostMapping("/login")
-    public ApiResponse<UserResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<UserResponse> login(
+        @Valid @RequestBody LoginRequest request
+    ) {
         return userService.login(request);
+    }
+
+    // 退出登录
+    @PostMapping("/logout")
+    public ApiResponse<Boolean> logout(
+        @Valid @RequestBody LogoutRequest request
+    ) {
+        return userService.logout(request);
     }
 }
