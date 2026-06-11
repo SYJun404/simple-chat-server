@@ -27,16 +27,26 @@ public class UserService {
             return ApiResponse.error(400, "用户名已存在");
         }
 
-        // 创建用户（默认离线）
+        // 创建用户（默认离线，先不设头像）
         User user = User.builder()
             .username(usname)
             .password(request.getPassword())
             .nickname(nkname != null ? nkname : usname)
-            .avatar("https://api.dicebear.com/10.x/micah/svg?seed=" + nkname)
             .status(0)
             .build();
 
         user = userRepository.save(user);
+
+        // 根据 id 分配头像
+        String[] avatars = {
+            "https://img.cdn1.vip/i/6a2a6a21a6f30_1781164577.png",
+            "https://img.cdn1.vip/i/6a2a6a215d081_1781164577.png",
+            "https://img.cdn1.vip/i/6a2a6a2160b63_1781164577.png",
+            "https://img.cdn1.vip/i/6a2a6a210d551_1781164577.png",
+            "https://img.cdn1.vip/i/6a2a6a210dfe9_1781164577.png",
+        };
+        user.setAvatar(avatars[(int) (user.getId() % 5)]);
+        userRepository.save(user);
 
         return ApiResponse.success("注册成功", UserResponse.from(user));
     }
