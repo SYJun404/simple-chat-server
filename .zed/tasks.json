@@ -1,0 +1,8 @@
+[
+    {
+        "label": "Run Java Quietly",
+        "command": "mvn spring-boot:run",
+        "show_summary": false,
+        "show_command": false,
+    },
+]
