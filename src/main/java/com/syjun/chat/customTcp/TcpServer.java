@@ -1,5 +1,6 @@
 package com.syjun.chat.customTcp;
 
+import com.syjun.chat.dto.*;
 import jakarta.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,7 +9,6 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,7 @@ public class TcpServer implements CommandLineRunner {
     private ServerSocket serverSocket;
 
     // 用户名 → Socket输出流
-    private final Map<String, PrintWriter> clients = new ConcurrentHashMap<>();
+    private final Map<String, PrintWriter> clients = new HashMap<>();
 
     @Override
     public void run(String... args) throws Exception {
@@ -81,12 +81,11 @@ public class TcpServer implements CommandLineRunner {
             }
         }
 
-        // 格式：
-        //   LOGIN|Alice\n -> COMMAND|login user|\n
-        //   MSG|SYJun|Bob|你好\n  -> COMMAND|from userId|to userId|content|\n
+        //   LOGIN|1004
+        //   LOGOUT
 
         private void handleMessage(String raw) {
-            String[] parts = raw.split("\\|", 4);
+            String[] parts = raw.split("\\|", -1);
             String cmd = parts[0];
 
             switch (cmd) {
@@ -108,18 +107,6 @@ public class TcpServer implements CommandLineRunner {
 
                     System.out.println(username + " 已上线");
                 }
-                case "MSG" -> {
-                    // MSG|fromUserId|toUserId|content
-                    String from = parts[1];
-                    String to = parts[2];
-                    String content = parts[3];
-                    PrintWriter target = clients.get(to);
-                    if (target != null) {
-                        target.println("MSG|" + from + "|" + content);
-                    } else {
-                        out.println("SERVER|USER_NOT_FOUND|" + to);
-                    }
-                }
                 case "LOGOUT" -> {
                     clients.remove(username);
 
@@ -140,6 +127,14 @@ public class TcpServer implements CommandLineRunner {
         }
     }
 
+    // MSG|{"id":27,"fromUserId":4,"toUserId":2,"content":"4","sendTime":"2026-06-26T11:10:58.108211","isRead":0}
+    public void sendToUser(String toUsername, ChatMessageResponse message) {
+        PrintWriter target = clients.get(toUsername);
+        if (target != null) {
+            target.println("MSG|" + message.toJsonStr());
+        }
+    }
+
     /** 通过username向特定的用户发送加好友的消息 */
     public void sendFriendRequest(String fromUserNickname, String toUsername) {
         PrintWriter target = clients.get(toUsername);
@@ -148,7 +143,7 @@ public class TcpServer implements CommandLineRunner {
         }
     }
 
-    /** 通过username向特定的用户发送加好友的消息 */
+    /** 发送接收好友的消息 */
     public void sendFriendAccept(String fromUsername, String toUsername) {
         Stream.of(toUsername, fromUsername)
             .map(clients::get)

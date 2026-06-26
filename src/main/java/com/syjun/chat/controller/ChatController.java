@@ -33,4 +33,14 @@ public class ChatController {
     ) {
         return chatMessageService.sendMessage(request);
     }
+
+    /**
+     * 发送聊天消息: 存库 + 自定义Tcp 推送
+     */
+    @PostMapping("/send-swing")
+    public ApiResponse<ChatMessageResponse> sendSwingMessage(
+        @Valid @RequestBody SendMessageRequest request
+    ) {
+        return chatMessageService.sendSwingMessage(request);
+    }
 }

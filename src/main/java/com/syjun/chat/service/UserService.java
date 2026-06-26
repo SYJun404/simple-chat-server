@@ -73,12 +73,12 @@ public class UserService {
         userRepository.save(user);
 
         // 通知所有在线用户刷新好友列表
-        sessionManager.broadcast(
-            WsMessage.builder()
-                .type("friend_accepted")
-                .data(user.getId())
-                .build()
-        );
+        // sessionManager.broadcast(
+        //     WsMessage.builder()
+        //         .type("friend_accepted")
+        //         .data(user.getId())
+        //         .build()
+        // );
 
         return ApiResponse.success("登录成功", UserResponse.from(user));
     }

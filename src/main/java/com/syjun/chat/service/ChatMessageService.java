@@ -1,8 +1,13 @@
 package com.syjun.chat.service;
 
+import com.syjun.chat.customTcp.*;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.ChatMessage;
+import com.syjun.chat.entity.Friend;
+import com.syjun.chat.entity.FriendRequestRecord;
+import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.ChatMessageRepository;
+import com.syjun.chat.repository.UserRepository;
 import com.syjun.chat.websocket.WebSocketSessionManager;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +19,8 @@ public class ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
     private final WebSocketSessionManager sessionManager;
+    private final UserRepository userRepository;
+    private final TcpServer customTcp;
 
     /**
      * 查询两个用户之间的聊天记录
@@ -54,6 +61,30 @@ public class ChatMessageService {
             request.getToUserId(),
             WsMessage.chat(response)
         );
+
+        return ApiResponse.success("发送成功", response);
+    }
+
+    public ApiResponse<ChatMessageResponse> sendSwingMessage(
+        SendMessageRequest request
+    ) {
+        // 1. 存入数据库
+        ChatMessage msg = ChatMessage.builder()
+            .fromUserId(request.getFromUserId())
+            .toUserId(request.getToUserId())
+            .content(request.getContent())
+            .isRead(0)
+            .build();
+
+        msg = chatMessageRepository.save(msg);
+
+        // 2. 通知用户来消息了
+        ChatMessageResponse response = ChatMessageResponse.from(msg);
+        User toUser = userRepository
+            .findById(request.getToUserId())
+            .orElse(null);
+
+        customTcp.sendToUser(toUser.getUsername(), response);
 
         return ApiResponse.success("发送成功", response);
     }
