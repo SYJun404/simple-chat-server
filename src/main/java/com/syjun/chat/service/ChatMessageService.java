@@ -3,8 +3,6 @@ package com.syjun.chat.service;
 import com.syjun.chat.customTcp.*;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.ChatMessage;
-import com.syjun.chat.entity.Friend;
-import com.syjun.chat.entity.FriendRequestRecord;
 import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.ChatMessageRepository;
 import com.syjun.chat.repository.UserRepository;
