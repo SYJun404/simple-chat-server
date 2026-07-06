@@ -3,7 +3,7 @@ package com.syjun.chat.service;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.UserRepository;
-import com.syjun.chat.websocket.WebSocketSessionManager;
+// import com.syjun.chat.websocket.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

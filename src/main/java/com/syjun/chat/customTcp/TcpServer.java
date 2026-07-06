@@ -1,6 +1,7 @@
 package com.syjun.chat.customTcp;
 
 import com.syjun.chat.dto.*;
+import com.syjun.chat.repository.UserRepository;
 import jakarta.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +25,13 @@ public class TcpServer implements CommandLineRunner {
 
     // 用户名 → Socket输出流
     private final Map<String, PrintWriter> clients = new ConcurrentHashMap<>();
+
+    private final UserRepository userRepository;
+
+    @Autowired
+    public TcpServer(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -74,11 +83,17 @@ public class TcpServer implements CommandLineRunner {
                     handleMessage(line);
                 }
             } catch (IOException e) {
-                System.out.println(username + " 断开连接");
+                System.out.println(username + " 断开连接" + "--->" + e);
             } finally {
                 if (username != null) {
                     clients.remove(username);
-                    System.out.println(username + "finally 断开连接");
+                    System.out.println(username + "【 finally 】 断开连接");
+
+                    // 用户下线，将status设置为0
+                    userRepository.findByUsername(username).ifPresent(user -> {
+                        user.setStatus(0);
+                        userRepository.save(user);
+                    });
                 }
             }
         }
@@ -142,16 +157,12 @@ public class TcpServer implements CommandLineRunner {
 
         // 准备好要序列化的消息内容
         String payload = "MSG|" + message.toJsonStr();
-        
-        System.out.println("当前在线用户: " + clients.keySet());
-        System.out.println(payload);
-        
+
         // 统一遍历发送
         for (String key : new String[] { toUsername, androidUsername }) {
             PrintWriter target = clients.get(key);
             System.out.println(key);
             if (target != null) {
-                System.out.println("存在的key：" + key);
                 target.println(payload);
             }
         }
