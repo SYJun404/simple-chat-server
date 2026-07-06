@@ -37,10 +37,13 @@ public class ChatController {
     /**
      * 发送聊天消息: 存库 + 自定义Tcp 推送
      */
-    @PostMapping("/send-swing")
-    public ApiResponse<ChatMessageResponse> sendSwingMessage(
+    @PostMapping("/send/{platform}")
+    public ApiResponse<ChatMessageResponse> sendMessage(
+        @PathVariable String platform,
         @Valid @RequestBody SendMessageRequest request
     ) {
-        return chatMessageService.sendSwingMessage(request);
+        // 根据路径判断平台类型，/send/swing (1) 或 /send/android (2)
+        int platformType = "android".equals(platform) ? 2 : 1;
+        return chatMessageService.sendSwingMessage(request, platformType);
     }
 }

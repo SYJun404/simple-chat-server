@@ -64,7 +64,8 @@ public class ChatMessageService {
     }
 
     public ApiResponse<ChatMessageResponse> sendSwingMessage(
-        SendMessageRequest request
+        SendMessageRequest request,
+        int platformType
     ) {
         // 1. 存入数据库
         ChatMessage msg = ChatMessage.builder()
@@ -82,7 +83,12 @@ public class ChatMessageService {
             .findById(request.getToUserId())
             .orElse(null);
 
+        User fromUser = userRepository
+            .findById(request.getFromUserId())
+            .orElse(null);
+
         customTcp.sendToUser(toUser.getUsername(), response);
+        customTcp.sendToSelfDiffPlatform(fromUser.getUsername(), response,platformType);
 
         return ApiResponse.success("发送成功", response);
     }

@@ -153,6 +153,7 @@ public class TcpServer implements CommandLineRunner {
         if (toUsername == null || toUsername.isEmpty()) return;
 
         // 构造出Android端需要发送的目标 Key
+        // Swing 客户端在 clients map 中的 key 是 "username"，Android 是 "username@"
         String androidUsername = toUsername + "@";
 
         // 准备好要序列化的消息内容
@@ -161,10 +162,26 @@ public class TcpServer implements CommandLineRunner {
         // 统一遍历发送
         for (String key : new String[] { toUsername, androidUsername }) {
             PrintWriter target = clients.get(key);
-            System.out.println(key);
             if (target != null) {
                 target.println(payload);
             }
+        }
+    }
+
+    /** 给 sender 的另一个平台发消息。platformType: 1=Swing, 2=Android */
+    public void sendToSelfDiffPlatform(
+        String fromUsername,
+        ChatMessageResponse message,
+        int platformType
+    ) {
+        if (fromUsername == null || fromUsername.isEmpty()) return;
+
+        String targetKey =
+            platformType != 2 ? fromUsername + "@" : fromUsername;
+
+        PrintWriter target = clients.get(targetKey);
+        if (target != null) {
+            target.println("MSG|" + message.toJsonStr());
         }
     }
 
