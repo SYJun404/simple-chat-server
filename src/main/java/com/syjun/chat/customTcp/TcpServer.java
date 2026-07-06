@@ -9,6 +9,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,7 @@ public class TcpServer implements CommandLineRunner {
     private ServerSocket serverSocket;
 
     // 用户名 → Socket输出流
-    private final Map<String, PrintWriter> clients = new HashMap<>();
+    private final Map<String, PrintWriter> clients = new ConcurrentHashMap<>();
 
     @Override
     public void run(String... args) throws Exception {
@@ -77,6 +78,7 @@ public class TcpServer implements CommandLineRunner {
             } finally {
                 if (username != null) {
                     clients.remove(username);
+                    System.out.println(username + "finally 断开连接");
                 }
             }
         }
@@ -90,10 +92,12 @@ public class TcpServer implements CommandLineRunner {
 
             switch (cmd) {
                 case "LOGIN" -> {
+                    if (parts.length < 2 || parts[1].isBlank()) {
+                        System.out.println("LOGIN 格式错误: " + raw);
+                        return;
+                    }
                     username = parts[1];
                     clients.put(username, out);
-
-                    // 广播给所有其他在线用户：新用户上线
                     for (Map.Entry<
                         String,
                         PrintWriter
@@ -127,11 +131,29 @@ public class TcpServer implements CommandLineRunner {
         }
     }
 
-    // MSG|{"id":27,"fromUserId":4,"toUserId":2,"content":"4","sendTime":"2026-06-26T11:10:58.108211","isRead":0}
+    /** MSG|{"id":27,"fromUserId":4,"toUserId":2,"content":"4","sendTime":"2026-06-26T11:10:58.108211","isRead":0} */
     public void sendToUser(String toUsername, ChatMessageResponse message) {
-        PrintWriter target = clients.get(toUsername);
-        if (target != null) {
-            target.println("MSG|" + message.toJsonStr());
+        // toUsername可能是1004，也可能是1004@
+        // 先在 clients map 中查找存在的值，再进行消息转发，如何同时存在都要发送
+        if (toUsername == null || toUsername.isEmpty()) return;
+
+        // 构造出Android端需要发送的目标 Key
+        String androidUsername = toUsername + "@";
+
+        // 准备好要序列化的消息内容
+        String payload = "MSG|" + message.toJsonStr();
+        
+        System.out.println("当前在线用户: " + clients.keySet());
+        System.out.println(payload);
+        
+        // 统一遍历发送
+        for (String key : new String[] { toUsername, androidUsername }) {
+            PrintWriter target = clients.get(key);
+            System.out.println(key);
+            if (target != null) {
+                System.out.println("存在的key：" + key);
+                target.println(payload);
+            }
         }
     }
 

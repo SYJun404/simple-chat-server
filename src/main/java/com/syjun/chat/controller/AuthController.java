@@ -6,7 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
+@RestController // 接口方法返回对象，自动转换为json文本
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
@@ -18,6 +18,8 @@ public class AuthController {
     public ApiResponse<UserResponse> register(
         @Valid @RequestBody RegisterRequest request
     ) {
+        // @Valid DTO开启验证的关键
+        // @RequestBody 代表传入的是json对象
         return userService.register(request);
     }
 

@@ -7,12 +7,13 @@ import com.syjun.chat.websocket.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-@Service
+@Service // spring's bean
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
-    private final WebSocketSessionManager sessionManager;
+
+    // private final WebSocketSessionManager sessionManager;
 
     /**
      * 注册
@@ -98,12 +99,12 @@ public class UserService {
         userRepository.save(user);
 
         // 通知所有在线用户刷新好友列表
-        sessionManager.broadcast(
-            WsMessage.builder()
-                .type("friend_accepted")
-                .data(user.getId())
-                .build()
-        );
+        // sessionManager.broadcast(
+        //     WsMessage.builder()
+        //         .type("friend_accepted")
+        //         .data(user.getId())
+        //         .build()
+        // );
 
         return ApiResponse.success(true);
     }
