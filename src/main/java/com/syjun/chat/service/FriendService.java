@@ -102,31 +102,36 @@ public class FriendService {
 
     public ApiResponse<Void> sendFriendRequest(Long fromUserId, Long toUserId) {
         // 获取发起者的信息
-        User fromUser = userRepository.findById(fromUserId).orElse(null);
-        String fromNickname = fromUser != null ? fromUser.getNickname() : null;
-        String fromAvatar = fromUser != null ? fromUser.getAvatar() : null;
+        // User fromUser = userRepository.findById(fromUserId).orElse(null);
+        // String fromNickname = fromUser != null ? fromUser.getNickname() : null;
+        // String fromAvatar = fromUser != null ? fromUser.getAvatar() : null;
 
-        if (sessionManager.isOnline(toUserId)) {
-            // 目标在线 → 通过 WebSocket 实时推送
-            FriendRequestVO requestVO = FriendRequestVO.builder()
-                .fromUserId(fromUserId)
-                .fromNickname(fromNickname)
-                .fromAvatar(fromAvatar)
-                .build();
+        return ApiResponse.success(
+            "对方不在线，好友请求已保存，待对方上线后处理",
+            null
+        );
 
-            sessionManager.sendToUser(
-                toUserId,
-                WsMessage.friendRequest(requestVO)
-            );
-            return ApiResponse.success("好友请求已发送", null);
-        } else {
-            // 目标不在线 → 存入数据库，等其上線後自行拉取
-            // friendRequestRecordService.saveFriendRequest(fromUserId, toUserId);
-            return ApiResponse.success(
-                "对方不在线，好友请求已保存，待对方上线后处理",
-                null
-            );
-        }
+        // if (sessionManager.isOnline(toUserId)) {
+        //     // 目标在线 → 通过 WebSocket 实时推送
+        //     FriendRequestVO requestVO = FriendRequestVO.builder()
+        //         .fromUserId(fromUserId)
+        //         .fromNickname(fromNickname)
+        //         .fromAvatar(fromAvatar)
+        //         .build();
+
+        //     sessionManager.sendToUser(
+        //         toUserId,
+        //         WsMessage.friendRequest(requestVO)
+        //     );
+        //     return ApiResponse.success("好友请求已发送", null);
+        // } else {
+        //     // 目标不在线 → 存入数据库，等其上線後自行拉取
+        //     // friendRequestRecordService.saveFriendRequest(fromUserId, toUserId);
+        //     return ApiResponse.success(
+        //         "对方不在线，好友请求已保存，待对方上线后处理",
+        //         null
+        //     );
+        // }
     }
 
     public ApiResponse<Void> acceptFriendSwingRequest(
@@ -191,14 +196,14 @@ public class FriendService {
         friendRepository.save(f1);
         friendRepository.save(f2);
 
-        sessionManager.sendToUser(
-            toUserId,
-            WsMessage.friendAccepted(fromUserId)
-        );
-        sessionManager.sendToUser(
-            fromUserId,
-            WsMessage.friendAccepted(toUserId)
-        );
+        // sessionManager.sendToUser(
+        //     toUserId,
+        //     WsMessage.friendAccepted(fromUserId)
+        // );
+        // sessionManager.sendToUser(
+        //     fromUserId,
+        //     WsMessage.friendAccepted(toUserId)
+        // );
 
         return ApiResponse.success("好友添加成功", null);
     }

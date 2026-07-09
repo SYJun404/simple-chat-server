@@ -19,8 +19,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        Long userId = getUserId(session);
-        if (userId == null) {
+        String username = getUsername(session);
+        if (username == null) {
             log.warn("WebSocket 连接缺少 userId 参数，关闭连接");
             try {
                 session.close();
@@ -28,7 +28,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        sessionManager.register(userId, session);
+        sessionManager.register(username, session);
     }
 
     @Override
@@ -45,32 +45,32 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         WebSocketSession session,
         CloseStatus status
     ) {
-        Long userId = getUserId(session);
-        if (userId != null) {
-            sessionManager.remove(userId, session);
+        String username = getUsername(session);
+        if (username != null) {
+            sessionManager.remove(username, session);
         }
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable ex) {
         log.error("WebSocket 传输错误: {}", ex.getMessage());
-        Long userId = getUserId(session);
-        if (userId != null) {
-            sessionManager.remove(userId, session);
+        String username = getUsername(session);
+        if (username != null) {
+            sessionManager.remove(username, session);
         }
     }
 
-    /** 从 URL 查询参数中提取 userId */
-    private Long getUserId(WebSocketSession session) {
+    /** 从 URL 查询参数中提取 username */
+    private String getUsername(WebSocketSession session) {
         String query =
             session.getUri() != null ? session.getUri().getQuery() : null;
         if (query == null) return null;
 
         for (String param : query.split("&")) {
             String[] kv = param.split("=", 2);
-            if (kv.length == 2 && "userId".equals(kv[0])) {
+            if (kv.length == 2 && "username".equals(kv[0])) {
                 try {
-                    return Long.valueOf(kv[1]);
+                    return kv[1];
                 } catch (NumberFormatException e) {
                     return null;
                 }

@@ -13,14 +13,14 @@ import org.springframework.web.socket.WebSocketSession;
 
 /**
  * WebSocket 会话管理器
- * 维护 userId → WebSocketSession 的映射，实现点对点推送
+ * 维护 username → WebSocketSession 的映射，实现点对点推送
  */
 @Slf4j
 @Component
 public class WebSocketSessionManager {
 
-    /** userId → WebSocketSession */
-    private final Map<Long, WebSocketSession> sessionMap =
+    /** username → WebSocketSession */
+    private final Map<String, WebSocketSession> sessionMap =
         new ConcurrentHashMap<>();
 
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -30,29 +30,29 @@ public class WebSocketSessionManager {
     /**
      * 注册会话。同一个用户只保留最新连接，旧连接会被关闭。
      */
-    public void register(Long userId, WebSocketSession session) {
+    public void register(String username, WebSocketSession session) {
         // 关闭旧连接，保证一个用户永远只有一个活着的连接
-        WebSocketSession oldSession = sessionMap.put(userId, session);
+        WebSocketSession oldSession = sessionMap.put(username, session);
         if (oldSession != null && oldSession.isOpen()) {
             try {
                 oldSession.close();
-                log.info("用户 {} 旧连接已关闭，替换为新连接", userId);
+                log.info("用户 {} 旧连接已关闭，替换为新连接", username);
             } catch (IOException e) {
-                log.warn("关闭用户 {} 旧连接失败: {}", userId, e.getMessage());
+                log.warn("关闭用户 {} 旧连接失败: {}", username, e.getMessage());
             }
         }
-        log.info("用户 {} 上线，当前在线: {}", userId, sessionMap.size());
+        log.info("用户 {} 上线，当前在线: {}", username, sessionMap.size());
     }
 
     /** 移除会话（仅当 Map 中存的确实是这个 session 时才移除） */
-    public void remove(Long userId, WebSocketSession session) {
-        sessionMap.remove(userId, session);
-        log.info("用户 {} 下线，当前在线: {}", userId, sessionMap.size());
+    public void remove(String username, WebSocketSession session) {
+        sessionMap.remove(username, session);
+        log.info("用户 {} 下线，当前在线: {}", username, sessionMap.size());
     }
 
     /** 判断用户是否在线 */
-    public boolean isOnline(Long userId) {
-        return sessionMap.containsKey(userId);
+    public boolean isOnline(String username) {
+        return sessionMap.containsKey(username);
     }
 
     /** 获取在线用户数 */
@@ -63,19 +63,19 @@ public class WebSocketSessionManager {
     /**
      * 向指定用户发送消息
      */
-    public void sendToUser(Long toUserId, Object message) {
-        WebSocketSession session = sessionMap.get(toUserId);
+    public void sendToUser(String toUsername, Object message) {
+        WebSocketSession session = sessionMap.get(toUsername);
         if (session == null || !session.isOpen()) {
-            log.warn("用户 {} 不在线，消息发送失败", toUserId);
+            log.warn("用户 {} 不在线，消息发送失败", toUsername);
             return;
         }
 
         try {
             String json = objectMapper.writeValueAsString(message);
             session.sendMessage(new TextMessage(json));
-            log.info("消息已推送给用户 {}", toUserId);
+            log.info("消息已推送给用户 {}", toUsername);
         } catch (IOException e) {
-            log.error("向用户 {} 发送消息失败: {}", toUserId, e.getMessage());
+            log.error("向用户 {} 发送消息失败: {}", toUsername, e.getMessage());
         }
     }
 
@@ -91,12 +91,12 @@ public class WebSocketSessionManager {
             return;
         }
 
-        sessionMap.forEach((userId, session) -> {
+        sessionMap.forEach((username, session) -> {
             if (session.isOpen()) {
                 try {
                     session.sendMessage(new TextMessage(json));
                 } catch (IOException e) {
-                    log.error("向用户 {} 广播失败: {}", userId, e.getMessage());
+                    log.error("向用户 {} 广播失败: {}", username, e.getMessage());
                 }
             }
         });

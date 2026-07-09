@@ -53,10 +53,13 @@ public class ChatMessageService {
         msg = chatMessageRepository.save(msg);
 
         ChatMessageResponse response = ChatMessageResponse.from(msg);
+        User toUser = userRepository
+            .findById(request.getToUserId())
+            .orElse(null);
 
         // 2. 通过 WebSocket 推送给接收者
         sessionManager.sendToUser(
-            request.getToUserId(),
+            toUser.getUsername(),
             WsMessage.chat(response)
         );
 
