@@ -1,4 +1,4 @@
-package com.syjun.chat;
+package com.syjun.chat.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
