@@ -3,6 +3,7 @@ package com.syjun.chat.customTcp;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.repository.UserRepository;
 import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class TcpServer implements CommandLineRunner {
 
@@ -36,8 +38,7 @@ public class TcpServer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         serverSocket = new ServerSocket(PORT);
-        System.out.println("TCP Server 启动，端口 " + PORT);
-
+        log.info("TCP Server 启动，端口 {}", PORT);
         while (true) {
             Socket socket = serverSocket.accept();
             new Thread(new ClientHandler(socket)).start();
@@ -49,7 +50,7 @@ public class TcpServer implements CommandLineRunner {
         if (serverSocket != null && !serverSocket.isClosed()) {
             try {
                 serverSocket.close();
-                System.out.println("TCP Server 已关闭");
+                log.info("TCP Server 已关闭");
             } catch (IOException e) {
                 // ignore
             }
@@ -83,12 +84,11 @@ public class TcpServer implements CommandLineRunner {
                     handleMessage(line);
                 }
             } catch (IOException e) {
-                System.out.println(username + " 断开连接" + "--->" + e);
+                log.warn(username + " 断开连接" + "--->" + e);
             } finally {
                 if (username != null) {
                     clients.remove(username);
-                    System.out.println(username + "【 finally 】 断开连接");
-
+                    log.warn(username + "【 finally 】 断开连接");
                     // 用户下线，将status设置为0
                     userRepository.findByUsername(username).ifPresent(user -> {
                         user.setStatus(0);
@@ -108,7 +108,7 @@ public class TcpServer implements CommandLineRunner {
             switch (cmd) {
                 case "LOGIN" -> {
                     if (parts.length < 2 || parts[1].isBlank()) {
-                        System.out.println("LOGIN 格式错误: " + raw);
+                        log.warn("LOGIN 格式错误: {}", raw);
                         return;
                     }
                     username = parts[1];
@@ -124,7 +124,7 @@ public class TcpServer implements CommandLineRunner {
                         }
                     }
 
-                    System.out.println(username + " 已上线");
+                    log.info("{} 已上线", username);
                 }
                 case "LOGOUT" -> {
                     clients.remove(username);
@@ -139,7 +139,7 @@ public class TcpServer implements CommandLineRunner {
                             .println("SERVER|USER_LOGOUT|" + username);
                     }
 
-                    System.out.println(username + " 已登出");
+                    log.info("{} 已登出", username);
                 }
                 default -> out.println("SERVER|UNKNOWN_CMD");
             }
