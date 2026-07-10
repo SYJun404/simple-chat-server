@@ -2,6 +2,7 @@ package com.syjun.chat.service;
 
 import com.syjun.chat.customTcp.TcpServer;
 import com.syjun.chat.dto.ChatMessageResponse;
+import com.syjun.chat.dto.FriendRequestVO;
 import com.syjun.chat.dto.WsMessage;
 import com.syjun.chat.websocket.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
@@ -57,21 +58,37 @@ public class MessagePushService {
     /**
      * 推送好友请求给指定 TCP 用户
      */
-    public void sendFriendRequest(String fromNickname, String toUsername) {
+    public void sendFriendRequest(
+        String fromNickname,
+        String toUsername,
+        FriendRequestVO requestVO
+    ) {
         tcpServer.sendFriendRequest(fromNickname, toUsername);
-
-        // 如果将来浏览器/App 端也需要接收好友请求推送，可以在这里补 WebSocket 推送
-        // sessionManager.sendToUser(toUsername, WsMessage.friendRequest(...));
+        sessionManager.sendToUser(
+            toUsername,
+            WsMessage.friendRequest(requestVO)
+        );
     }
 
     /**
      * 推送好友接受通知
      */
-    public void sendFriendAccept(String fromUsername, String toUsername) {
+    public void sendFriendAccept(
+        String fromUsername,
+        String toUsername,
+        Long toUserId,
+        Long fromUserId
+    ) {
         tcpServer.sendFriendAccept(fromUsername, toUsername);
 
-        // sessionManager.sendToUser(fromUsername, WsMessage.friendAccepted(...));
-        // sessionManager.sendToUser(toUsername, WsMessage.friendAccepted(...));
+        sessionManager.sendToUser(
+            toUsername,
+            WsMessage.friendAccepted(fromUserId)
+        );
+        sessionManager.sendToUser(
+            fromUsername,
+            WsMessage.friendAccepted(toUserId)
+        );
     }
 
     /**

@@ -21,7 +21,7 @@ public class FriendRequestRecordService {
      * 保存离线好友请求记录
      */
     @Transactional
-    public void saveFriendRequest(String fromUserId, String toUserId) {
+    public Long saveFriendRequest(String fromUserId, String toUserId) {
         // 判断是否已存在相同的未处理请求，存在则直接返回
         if (
             recordRepository.existsByFromUserIdAndToUserIdAndIsRead(
@@ -30,7 +30,7 @@ public class FriendRequestRecordService {
                 0
             )
         ) {
-            return;
+            return -1L;
         }
 
         FriendRequestRecord record = FriendRequestRecord.builder()
@@ -39,6 +39,7 @@ public class FriendRequestRecordService {
             .isRead(0)
             .build();
         recordRepository.save(record);
+        return record.getId();
     }
 
     /**

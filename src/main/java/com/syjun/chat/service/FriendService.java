@@ -58,10 +58,24 @@ public class FriendService {
     }
 
     /**
-     * 发送好友请求: 目标在线则 WebSocket 推送，不在线则存入数据库等待上线后拉取
+     * 发送好友请求（按用户ID查找，浏览器/App 端使用）
      */
+    public ApiResponse<Long> sendFriendRequest(Long fromUserId, Long toUserId) {
+        User fromUser = userRepository.findById(fromUserId).orElse(null);
+        if (fromUser == null) {
+            return ApiResponse.error(404, "发起者用户不存在");
+        }
+        User toUser = userRepository.findById(toUserId).orElse(null);
+        if (toUser == null) {
+            return ApiResponse.error(404, "目标用户不存在");
+        }
+        return doSendFriendRequest(fromUser, toUser);
+    }
 
-    public ApiResponse<Void> sendFriendSwingRequest(
+    /**
+     * 发送好友请求（按昵称查找，Swing 客户端使用）
+     */
+    public ApiResponse<Long> sendFriendSwingRequest(
         String fromUserNickname,
         String toUserNickname
     ) {
@@ -69,72 +83,57 @@ public class FriendService {
         if (fromUsers.isEmpty()) {
             return ApiResponse.error(404, "发起者用户不存在");
         }
-        User fromUser = fromUsers.getFirst();
-        String fromUsername = fromUser.getUsername();
-
-        // 获取目标用户信息
-
         List<User> toUsers = userRepository.findByNickname(toUserNickname);
         if (toUsers.isEmpty()) {
             return ApiResponse.error(404, "目标用户不存在");
         }
-        User toUser = toUsers.getFirst();
-        String toUsername = toUser.getUsername();
+        return doSendFriendRequest(fromUsers.getFirst(), toUsers.getFirst());
+    }
 
-        if (toUsername.equals(fromUsername)) {
-            return ApiResponse.error(404, "不能添加自己为好友!");
+    /**
+     * 核心：发送好友请求
+     * 保存记录 → 判断在线 → 推送
+     */
+    private ApiResponse<Long> doSendFriendRequest(User fromUser, User toUser) {
+        if (toUser.getUsername().equals(fromUser.getUsername())) {
+            return ApiResponse.error(400, "不能添加自己为好友");
         }
 
         // 存入数据库
-        friendRequestRecordService.saveFriendRequest(fromUsername, toUsername);
+        Long recordId = friendRequestRecordService.saveFriendRequest(
+            fromUser.getUsername(),
+            toUser.getUsername()
+        );
+        if (recordId.equals(-1L)) {
+            return ApiResponse.error(400, "当前好友添加记录已经存在");
+        }
 
-        if (messagePushService.isTcpOnline(toUsername)) {
-            // 目标在线 → 实时推送好友请求（TCP + WebSocket）
+        if (
+            messagePushService.isTcpOnline(toUser.getUsername()) ||
+            messagePushService.isWsOnline(toUser.getUsername())
+        ) {
+            FriendRequestVO requestVO = FriendRequestVO.builder()
+                .fromUserId(fromUser.getId())
+                .fromNickname(fromUser.getNickname())
+                .fromRecordId(recordId)
+                .build();
+
             messagePushService.sendFriendRequest(
                 fromUser.getNickname(),
-                toUsername
+                toUser.getUsername(),
+                requestVO
             );
-            return ApiResponse.success("好友请求已发送", null);
-        } else {
-            return ApiResponse.error(404, "对方不在线，请求已保存");
+            return ApiResponse.success("好友请求已发送", recordId);
         }
+
+        return ApiResponse.error(404, "对方不在线，请求已保存");
     }
 
-    public ApiResponse<Void> sendFriendRequest(Long fromUserId, Long toUserId) {
-        // 获取发起者的信息
-        // User fromUser = userRepository.findById(fromUserId).orElse(null);
-        // String fromNickname = fromUser != null ? fromUser.getNickname() : null;
-        // String fromAvatar = fromUser != null ? fromUser.getAvatar() : null;
-
-        return ApiResponse.success(
-            "对方不在线，好友请求已保存，待对方上线后处理",
-            null
-        );
-
-        // if (sessionManager.isOnline(toUserId)) {
-        //     // 目标在线 → 通过 WebSocket 实时推送
-        //     FriendRequestVO requestVO = FriendRequestVO.builder()
-        //         .fromUserId(fromUserId)
-        //         .fromNickname(fromNickname)
-        //         .fromAvatar(fromAvatar)
-        //         .build();
-
-        //     sessionManager.sendToUser(
-        //         toUserId,
-        //         WsMessage.friendRequest(requestVO)
-        //     );
-        //     return ApiResponse.success("好友请求已发送", null);
-        // } else {
-        //     // 目标不在线 → 存入数据库，等其上線後自行拉取
-        //     // friendRequestRecordService.saveFriendRequest(fromUserId, toUserId);
-        //     return ApiResponse.success(
-        //         "对方不在线，好友请求已保存，待对方上线后处理",
-        //         null
-        //     );
-        // }
-    }
-
-    public ApiResponse<Void> acceptFriendSwingRequest(
+    /**
+     * 核心：同意好友请求
+     * 双向建立好友关系 → 标记请求已读 → 推送通知
+     */
+    public ApiResponse<Void> acceptFriendRequest(
         Long fromUserId,
         Long toUserId,
         Long recordId
@@ -143,18 +142,14 @@ public class FriendService {
             return ApiResponse.error(400, "已经是好友了");
         }
 
-        Friend f1 = Friend.builder()
-            .userId(toUserId)
-            .friendId(fromUserId)
-            .build();
-        Friend f2 = Friend.builder()
-            .userId(fromUserId)
-            .friendId(toUserId)
-            .build();
-        friendRepository.save(f1);
-        friendRepository.save(f2);
+        friendRepository.save(
+            Friend.builder().userId(toUserId).friendId(fromUserId).build()
+        );
+        friendRepository.save(
+            Friend.builder().userId(fromUserId).friendId(toUserId).build()
+        );
 
-        // 将好友申请，标记为已读
+        // 将好友申请标记为已读
         FriendRequestRecord record = recordRepository
             .findById(recordId)
             .orElse(null);
@@ -163,47 +158,17 @@ public class FriendService {
             recordRepository.save(record);
         }
 
-        // 获取User对象
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         User toUser = userRepository.findById(toUserId).orElse(null);
 
-        messagePushService.sendFriendAccept(
-            fromUser.getUsername(),
-            toUser.getUsername()
-        );
-        return ApiResponse.success("好友添加成功", null);
-    }
-
-    /**
-     * 同意好友请求: 更新数据库内容 → 通过 WebSocket 推送刷新好友列表消息
-     */
-    public ApiResponse<Void> acceptFriendRequest(
-        Long fromUserId,
-        Long toUserId
-    ) {
-        if (friendRepository.existsByUserIdAndFriendId(toUserId, fromUserId)) {
-            return ApiResponse.error(400, "已经是好友了");
+        if (fromUser != null && toUser != null) {
+            messagePushService.sendFriendAccept(
+                fromUser.getUsername(),
+                toUser.getUsername(),
+                toUserId,
+                fromUserId
+            );
         }
-
-        Friend f1 = Friend.builder()
-            .userId(toUserId)
-            .friendId(fromUserId)
-            .build();
-        Friend f2 = Friend.builder()
-            .userId(fromUserId)
-            .friendId(toUserId)
-            .build();
-        friendRepository.save(f1);
-        friendRepository.save(f2);
-
-        // sessionManager.sendToUser(
-        //     toUserId,
-        //     WsMessage.friendAccepted(fromUserId)
-        // );
-        // sessionManager.sendToUser(
-        //     fromUserId,
-        //     WsMessage.friendAccepted(toUserId)
-        // );
 
         return ApiResponse.success("好友添加成功", null);
     }

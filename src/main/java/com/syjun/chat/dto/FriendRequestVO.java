@@ -12,11 +12,11 @@ import lombok.*;
 @Builder
 public class FriendRequestVO {
 
+    private Long fromRecordId;
+
     /** 发起请求的用户ID */
     private Long fromUserId;
 
     /** 发起请求的用户昵称 */
     private String fromNickname;
-
-    private String fromAvatar;
 }

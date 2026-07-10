@@ -37,8 +37,8 @@ public class FriendController {
      * 发送好友请求: 校验在线 + WebSocket 推送
      */
     @PostMapping("/request")
-    public ApiResponse<Void> sendFriendRequest(
-        @Valid @RequestBody FriendRequestDTO dto
+    public ApiResponse<Long> sendFriendRequest(
+        @Valid @RequestBody FriendRequestWebDTO dto
     ) {
         return friendService.sendFriendRequest(
             dto.getFromUserId(),
@@ -47,7 +47,7 @@ public class FriendController {
     }
 
     @PostMapping("/requestswing")
-    public ApiResponse<Void> sendFriendSwingRequest(
+    public ApiResponse<Long> sendFriendSwingRequest(
         @Valid @RequestBody FriendSwingRequestDTO dto
     ) {
         return friendService.sendFriendSwingRequest(
@@ -63,6 +63,7 @@ public class FriendController {
     public ApiResponse<List<FriendRequestRecordResponse>> getPendingRequests(
         @RequestParam String userId
     ) {
+        // userid 其实是 username
         return friendRequestRecordService.getPendingRequests(userId);
     }
 
@@ -79,7 +80,7 @@ public class FriendController {
     public ApiResponse<Void> acceptFriendSwingRequest(
         @Valid @RequestBody FriendRequestDTO dto
     ) {
-        return friendService.acceptFriendSwingRequest(
+        return friendService.acceptFriendRequest(
             dto.getFromUserId(),
             dto.getToUserId(),
             dto.getRecordId()
@@ -93,11 +94,12 @@ public class FriendController {
     ) {
         return friendService.acceptFriendRequest(
             dto.getFromUserId(),
-            dto.getToUserId()
+            dto.getToUserId(),
+            dto.getRecordId()
         );
     }
 
-    /** 好友/接受 请求 DTO */
+    /** 接受 请求 DTO */
     @Getter
     @Setter
     @NoArgsConstructor
@@ -106,6 +108,20 @@ public class FriendController {
 
         @NotNull
         private Long recordId;
+
+        @NotNull
+        private Long fromUserId;
+
+        @NotNull
+        private Long toUserId;
+    }
+
+    /** 发起 请求 DTO */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    static class FriendRequestWebDTO {
 
         @NotNull
         private Long fromUserId;

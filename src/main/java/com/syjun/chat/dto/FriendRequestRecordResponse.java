@@ -15,7 +15,7 @@ import lombok.*;
 public class FriendRequestRecordResponse {
 
     /** 当前记录的请求ID */
-    private Long reqId;
+    private Long fromRecordId;
 
     /** 发起请求的用户ID */
     private Long fromUserId;
@@ -31,7 +31,7 @@ public class FriendRequestRecordResponse {
         User fromUser
     ) {
         return FriendRequestRecordResponse.builder()
-            .reqId(record.getId())
+            .fromRecordId(record.getId())
             .fromUserId(fromUser.getId())
             .fromUsername(fromUser.getUsername())
             .fromUserNickname(fromUser.getNickname())
