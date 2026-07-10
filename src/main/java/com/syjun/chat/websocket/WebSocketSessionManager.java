@@ -3,10 +3,12 @@ package com.syjun.chat.websocket;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.syjun.chat.repository.UserRepository;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -19,6 +21,8 @@ import org.springframework.web.socket.WebSocketSession;
 @Component
 public class WebSocketSessionManager {
 
+    private final UserRepository userRepository;
+
     /** username → WebSocketSession */
     private final Map<String, WebSocketSession> sessionMap =
         new ConcurrentHashMap<>();
@@ -26,6 +30,11 @@ public class WebSocketSessionManager {
     private final ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); // 禁止把 `LocalDateTime` 序列化成数组
+
+    @Autowired
+    public WebSocketSessionManager(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * 注册会话。同一个用户只保留最新连接，旧连接会被关闭。
@@ -38,7 +47,11 @@ public class WebSocketSessionManager {
                 oldSession.close();
                 log.info("用户 {} 旧连接已关闭，替换为新连接", username);
             } catch (IOException e) {
-                log.warn("关闭用户 {} 旧连接失败: {}", username, e.getMessage());
+                log.warn(
+                    "关闭用户 {} 旧连接失败: {}",
+                    username,
+                    e.getMessage()
+                );
             }
         }
         log.info("用户 {} 上线，当前在线: {}", username, sessionMap.size());
@@ -46,6 +59,12 @@ public class WebSocketSessionManager {
 
     /** 移除会话（仅当 Map 中存的确实是这个 session 时才移除） */
     public void remove(String username, WebSocketSession session) {
+        // 用户下线，将status设置为0
+        userRepository.findByUsername(username).ifPresent(user -> {
+            user.setStatus(0);
+            userRepository.save(user);
+        });
+
         sessionMap.remove(username, session);
         log.info("用户 {} 下线，当前在线: {}", username, sessionMap.size());
     }
@@ -73,7 +92,6 @@ public class WebSocketSessionManager {
         try {
             String json = objectMapper.writeValueAsString(message);
             session.sendMessage(new TextMessage(json));
-            log.info("消息已推送给用户 {}", toUsername);
         } catch (IOException e) {
             log.error("向用户 {} 发送消息失败: {}", toUsername, e.getMessage());
         }
@@ -96,7 +114,11 @@ public class WebSocketSessionManager {
                 try {
                     session.sendMessage(new TextMessage(json));
                 } catch (IOException e) {
-                    log.error("向用户 {} 广播失败: {}", username, e.getMessage());
+                    log.error(
+                        "向用户 {} 广播失败: {}",
+                        username,
+                        e.getMessage()
+                    );
                 }
             }
         });

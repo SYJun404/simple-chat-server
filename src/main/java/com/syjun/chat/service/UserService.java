@@ -3,7 +3,6 @@ package com.syjun.chat.service;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.UserRepository;
-import com.syjun.chat.websocket.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +11,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
     private final UserRepository userRepository;
-
-    private final WebSocketSessionManager sessionManager;
+    private final MessagePushService messagePushService;
 
     /**
      * 注册
@@ -74,11 +72,12 @@ public class UserService {
         userRepository.save(user);
 
         // 通知所有在线用户刷新好友列表
-        sessionManager.broadcast(
+        messagePushService.broadcast(
             WsMessage.builder()
                 .type("friend_accepted")
                 .data(user.getId())
-                .build()
+                .build(),
+            "LOGIN|" + user.getUsername()
         );
 
         return ApiResponse.success("登录成功", UserResponse.from(user));
@@ -99,12 +98,13 @@ public class UserService {
         userRepository.save(user);
 
         // 通知所有在线用户刷新好友列表
-        // sessionManager.broadcast(
-        //     WsMessage.builder()
-        //         .type("friend_accepted")
-        //         .data(user.getId())
-        //         .build()
-        // );
+        messagePushService.broadcast(
+            WsMessage.builder()
+                .type("friend_accepted")
+                .data(user.getId())
+                .build(),
+            "LOGOUT|" + user.getUsername()
+        );
 
         return ApiResponse.success(true);
     }

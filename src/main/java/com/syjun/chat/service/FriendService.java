@@ -1,6 +1,5 @@
 package com.syjun.chat.service;
 
-import com.syjun.chat.customTcp.*;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.Friend;
 import com.syjun.chat.entity.FriendRequestRecord;
@@ -8,7 +7,6 @@ import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.FriendRepository;
 import com.syjun.chat.repository.FriendRequestRecordRepository;
 import com.syjun.chat.repository.UserRepository;
-import com.syjun.chat.websocket.WebSocketSessionManager;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,10 +17,9 @@ public class FriendService {
 
     private final FriendRepository friendRepository;
     private final UserRepository userRepository;
-    private final WebSocketSessionManager sessionManager;
     private final FriendRequestRecordService friendRequestRecordService;
     private final FriendRequestRecordRepository recordRepository;
-    private final TcpServer customTcp;
+    private final MessagePushService messagePushService;
 
     /**
      * 获取好友列表（返回好友的详细信息）
@@ -91,9 +88,12 @@ public class FriendService {
         // 存入数据库
         friendRequestRecordService.saveFriendRequest(fromUsername, toUsername);
 
-        if (customTcp.isOnline(toUsername)) {
-            // 目标在线 → 通过 TCP 实时推送好友请求
-            customTcp.sendFriendRequest(fromUser.getNickname(), toUsername);
+        if (messagePushService.isTcpOnline(toUsername)) {
+            // 目标在线 → 实时推送好友请求（TCP + WebSocket）
+            messagePushService.sendFriendRequest(
+                fromUser.getNickname(),
+                toUsername
+            );
             return ApiResponse.success("好友请求已发送", null);
         } else {
             return ApiResponse.error(404, "对方不在线，请求已保存");
@@ -167,7 +167,7 @@ public class FriendService {
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         User toUser = userRepository.findById(toUserId).orElse(null);
 
-        customTcp.sendFriendAccept(
+        messagePushService.sendFriendAccept(
             fromUser.getUsername(),
             toUser.getUsername()
         );

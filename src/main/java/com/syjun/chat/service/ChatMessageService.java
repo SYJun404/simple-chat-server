@@ -1,12 +1,10 @@
 package com.syjun.chat.service;
 
-import com.syjun.chat.customTcp.*;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.ChatMessage;
 import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.ChatMessageRepository;
 import com.syjun.chat.repository.UserRepository;
-import com.syjun.chat.websocket.WebSocketSessionManager;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,9 +14,8 @@ import org.springframework.stereotype.Service;
 public class ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
-    private final WebSocketSessionManager sessionManager;
     private final UserRepository userRepository;
-    private final TcpServer customTcp;
+    private final MessagePushService messagePushService;
 
     /**
      * 查询两个用户之间的聊天记录
@@ -37,7 +34,7 @@ public class ChatMessageService {
     }
 
     /**
-     * 发送聊天消息: 存入数据库 → 通过 WebSocket 推送给接收者
+     * 发送聊天消息: 存入数据库 → 通过 WebSocket + TCP 双通道推送给接收者
      */
     public ApiResponse<ChatMessageResponse> sendMessage(
         SendMessageRequest request
@@ -53,15 +50,22 @@ public class ChatMessageService {
         msg = chatMessageRepository.save(msg);
 
         ChatMessageResponse response = ChatMessageResponse.from(msg);
+        User fromUser = userRepository
+            .findById(request.getFromUserId())
+            .orElse(null);
         User toUser = userRepository
             .findById(request.getToUserId())
             .orElse(null);
 
-        // 2. 通过 WebSocket 推送给接收者
-        sessionManager.sendToUser(
-            toUser.getUsername(),
-            WsMessage.chat(response)
-        );
+        // 2. 双通道推送 (WebSocket + TCP)
+        if (toUser != null) {
+            messagePushService.sendChatMessage(
+                fromUser.getUsername(),
+                toUser.getUsername(),
+                response,
+                true
+            );
+        }
 
         return ApiResponse.success("发送成功", response);
     }
@@ -80,7 +84,7 @@ public class ChatMessageService {
 
         msg = chatMessageRepository.save(msg);
 
-        // 2. 通知用户来消息了
+        // 2. 双通道推送 + 跨平台推送
         ChatMessageResponse response = ChatMessageResponse.from(msg);
         User toUser = userRepository
             .findById(request.getToUserId())
@@ -90,8 +94,14 @@ public class ChatMessageService {
             .findById(request.getFromUserId())
             .orElse(null);
 
-        customTcp.sendToUser(toUser.getUsername(), response);
-        customTcp.sendToSelfDiffPlatform(fromUser.getUsername(), response,platformType);
+        if (toUser != null && fromUser != null) {
+            messagePushService.sendChatMessageWithSelf(
+                toUser.getUsername(),
+                fromUser.getUsername(),
+                response,
+                platformType
+            );
+        }
 
         return ApiResponse.success("发送成功", response);
     }

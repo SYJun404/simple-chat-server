@@ -3,7 +3,6 @@ package com.syjun.chat.customTcp;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.repository.UserRepository;
 import jakarta.annotation.PreDestroy;
-import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,6 +12,7 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -113,35 +113,44 @@ public class TcpServer implements CommandLineRunner {
                     }
                     username = parts[1];
                     clients.put(username, out);
-                    for (Map.Entry<
-                        String,
-                        PrintWriter
-                    > entry : clients.entrySet()) {
-                        if (!entry.getKey().equals(username)) {
-                            entry
-                                .getValue()
-                                .println("SERVER|USER_LOGIN|" + username);
-                        }
-                    }
 
                     log.info("{} 已上线", username);
                 }
                 case "LOGOUT" -> {
                     clients.remove(username);
 
-                    // 广播给其他在线用户
-                    for (Map.Entry<
-                        String,
-                        PrintWriter
-                    > entry : clients.entrySet()) {
-                        entry
-                            .getValue()
-                            .println("SERVER|USER_LOGOUT|" + username);
-                    }
-
                     log.info("{} 已登出", username);
                 }
                 default -> out.println("SERVER|UNKNOWN_CMD");
+            }
+        }
+    }
+
+    public void broadcast(String message) {
+        String[] parts = message.split("\\|", -1);
+        String cmd = parts[0];
+        String username = parts[1];
+
+        switch (cmd) {
+            case "LOGIN" -> {
+                for (Map.Entry<
+                    String,
+                    PrintWriter
+                > entry : clients.entrySet()) {
+                    if (!entry.getKey().equals(username)) {
+                        entry
+                            .getValue()
+                            .println("SERVER|USER_LOGIN|" + username);
+                    }
+                }
+            }
+            case "LOGOUT" -> {
+                for (Map.Entry<
+                    String,
+                    PrintWriter
+                > entry : clients.entrySet()) {
+                    entry.getValue().println("SERVER|USER_LOGOUT|" + username);
+                }
             }
         }
     }
