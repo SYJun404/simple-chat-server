@@ -3,6 +3,9 @@ package com.syjun.chat.websocket;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.syjun.chat.customTcp.TcpServer;
+import com.syjun.chat.dto.*;
+import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.UserRepository;
 import java.io.IOException;
 import java.util.Map;
@@ -13,15 +16,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-/**
- * WebSocket 会话管理器
- * 维护 username → WebSocketSession 的映射，实现点对点推送
- */
 @Slf4j
 @Component
 public class WebSocketSessionManager {
 
     private final UserRepository userRepository;
+    private final TcpServer tcpServer;
 
     /** username → WebSocketSession */
     private final Map<String, WebSocketSession> sessionMap =
@@ -29,18 +29,21 @@ public class WebSocketSessionManager {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); // 禁止把 `LocalDateTime` 序列化成数组
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     @Autowired
-    public WebSocketSessionManager(UserRepository userRepository) {
+    public WebSocketSessionManager(
+        UserRepository userRepository,
+        TcpServer tcpServer
+    ) {
         this.userRepository = userRepository;
+        this.tcpServer = tcpServer;
     }
 
     /**
      * 注册会话。同一个用户只保留最新连接，旧连接会被关闭。
      */
     public void register(String username, WebSocketSession session) {
-        // 关闭旧连接，保证一个用户永远只有一个活着的连接
         WebSocketSession oldSession = sessionMap.put(username, session);
         if (oldSession != null && oldSession.isOpen()) {
             try {
@@ -54,16 +57,40 @@ public class WebSocketSessionManager {
                 );
             }
         }
+
+        // 如果status为0，变成1
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user != null && user.getStatus() == 0) {
+            user.setStatus(1);
+            userRepository.save(user);
+
+            this.broadcast(
+                WsMessage.builder()
+                    .type("friend_accepted")
+                    .data(user.getId())
+                    .build()
+            );
+            tcpServer.broadcast("LOGIN|" + user.getUsername());
+        }
+
         log.info("用户 {} 上线，当前在线: {}", username, sessionMap.size());
     }
 
     /** 移除会话（仅当 Map 中存的确实是这个 session 时才移除） */
     public void remove(String username, WebSocketSession session) {
-        // 用户下线，将status设置为0
-        userRepository.findByUsername(username).ifPresent(user -> {
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user != null && user.getStatus() == 1) {
             user.setStatus(0);
             userRepository.save(user);
-        });
+
+            this.broadcast(
+                WsMessage.builder()
+                    .type("friend_accepted")
+                    .data(user.getId())
+                    .build()
+            );
+            tcpServer.broadcast("LOGOUT|" + user.getUsername());
+        }
 
         sessionMap.remove(username, session);
         log.info("用户 {} 下线，当前在线: {}", username, sessionMap.size());
@@ -94,6 +121,8 @@ public class WebSocketSessionManager {
             session.sendMessage(new TextMessage(json));
         } catch (IOException e) {
             log.error("向用户 {} 发送消息失败: {}", toUsername, e.getMessage());
+        } catch (IllegalStateException e) {
+            log.warn("用户 {} 会话已关闭，发送失败", toUsername);
         }
     }
 
@@ -113,12 +142,13 @@ public class WebSocketSessionManager {
             if (session.isOpen()) {
                 try {
                     session.sendMessage(new TextMessage(json));
-                } catch (IOException e) {
-                    log.error(
-                        "向用户 {} 广播失败: {}",
+                } catch (IOException | IllegalStateException e) {
+                    log.warn(
+                        "向用户 {} 广播失败，移除已关闭会话: {}",
                         username,
                         e.getMessage()
                     );
+                    sessionMap.remove(username, session);
                 }
             }
         });
