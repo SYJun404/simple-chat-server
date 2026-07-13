@@ -10,14 +10,15 @@ import com.syjun.chat.repository.UserRepository;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class WebSocketSessionManager {
 
     private final UserRepository userRepository;
@@ -30,15 +31,6 @@ public class WebSocketSessionManager {
     private final ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
-    @Autowired
-    public WebSocketSessionManager(
-        UserRepository userRepository,
-        TcpServer tcpServer
-    ) {
-        this.userRepository = userRepository;
-        this.tcpServer = tcpServer;
-    }
 
     /**
      * 注册会话。同一个用户只保留最新连接，旧连接会被关闭。

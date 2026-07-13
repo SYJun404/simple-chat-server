@@ -12,13 +12,14 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class TcpServer implements CommandLineRunner {
 
     private static final int PORT = 8412;
@@ -29,11 +30,6 @@ public class TcpServer implements CommandLineRunner {
     private final Map<String, PrintWriter> clients = new ConcurrentHashMap<>();
 
     private final UserRepository userRepository;
-
-    @Autowired
-    public TcpServer(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     public void run(String... args) throws Exception {
