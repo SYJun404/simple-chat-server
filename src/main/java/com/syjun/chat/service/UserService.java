@@ -93,10 +93,6 @@ public class UserService {
             return ApiResponse.error(400, "用户不存在");
         }
 
-        // 退出成功，更新在线状态
-        user.setStatus(0);
-        userRepository.save(user);
-
         // 通知所有在线用户刷新好友列表
         messagePushService.broadcast(
             WsMessage.builder()

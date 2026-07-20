@@ -19,7 +19,7 @@ public interface ChatMessageRepository
                OR (m.toUserId = :user1)
             ORDER BY m.sendTime ASC
         """
-    )
+    ) // 从实体类查询,而不是表。where不是列名,而是对象的属性名。
     List<ChatMessage> findChatHistory(@Param("user1") Long user1);
 
     /** 查询某个用户的所有未读消息 */

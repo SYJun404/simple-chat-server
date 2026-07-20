@@ -12,8 +12,8 @@ import lombok.*;
 @Builder
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id // 主键
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // 主键生成策略
     private Long id;
 
     /** 登录账号，唯一 */

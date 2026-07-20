@@ -3,10 +3,10 @@ package com.syjun.chat.websocket;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.syjun.chat.customTcp.TcpServer;
 import com.syjun.chat.dto.*;
 import com.syjun.chat.entity.User;
 import com.syjun.chat.repository.UserRepository;
+import com.syjun.chat.service.OnlineStatusManager;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +22,7 @@ import org.springframework.web.socket.WebSocketSession;
 public class WebSocketSessionManager {
 
     private final UserRepository userRepository;
-    private final TcpServer tcpServer;
+    private final OnlineStatusManager onlineStatusManager;
 
     /** username → WebSocketSession */
     private final Map<String, WebSocketSession> sessionMap =
@@ -62,7 +62,7 @@ public class WebSocketSessionManager {
                     .data(user.getId())
                     .build()
             );
-            tcpServer.broadcast("LOGIN|" + user.getUsername());
+            onlineStatusManager.broadcastTcpLogin(user.getUsername());
         }
 
         log.info("用户 {} 上线，当前在线: {}", username, sessionMap.size());
@@ -71,7 +71,8 @@ public class WebSocketSessionManager {
     /** 移除会话（仅当 Map 中存的确实是这个 session 时才移除） */
     public void remove(String username, WebSocketSession session) {
         User user = userRepository.findByUsername(username).orElse(null);
-        if (user != null && user.getStatus() == 1) {
+        boolean isOnlineTcp = onlineStatusManager.isTcpOnline(username);
+        if (user != null && user.getStatus() == 1 && !isOnlineTcp) {
             user.setStatus(0);
             userRepository.save(user);
 
@@ -81,7 +82,7 @@ public class WebSocketSessionManager {
                     .data(user.getId())
                     .build()
             );
-            tcpServer.broadcast("LOGOUT|" + user.getUsername());
+            onlineStatusManager.broadcastTcpLogout(user.getUsername());
         }
 
         sessionMap.remove(username, session);
@@ -104,7 +105,7 @@ public class WebSocketSessionManager {
     public void sendToUser(String toUsername, Object message) {
         WebSocketSession session = sessionMap.get(toUsername);
         if (session == null || !session.isOpen()) {
-            log.warn("用户 {} 不在线，消息发送失败", toUsername);
+            log.warn("Web-用户 {} 不在线，消息发送失败", toUsername);
             return;
         }
 

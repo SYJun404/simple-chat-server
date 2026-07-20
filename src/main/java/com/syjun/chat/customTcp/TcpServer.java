@@ -2,6 +2,7 @@ package com.syjun.chat.customTcp;
 
 import com.syjun.chat.dto.*;
 import com.syjun.chat.repository.UserRepository;
+import com.syjun.chat.service.OnlineStatusManager;
 import jakarta.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class TcpServer implements CommandLineRunner {
     private final Map<String, PrintWriter> clients = new ConcurrentHashMap<>();
 
     private final UserRepository userRepository;
+    private final OnlineStatusManager onlineStatusManager;
 
     @Override
     public void run(String... args) throws Exception {
@@ -87,8 +89,10 @@ public class TcpServer implements CommandLineRunner {
                     log.warn(username + "【 finally 】 断开连接");
                     // 用户下线，将status设置为0
                     userRepository.findByUsername(username).ifPresent(user -> {
-                        user.setStatus(0);
-                        userRepository.save(user);
+                        if (!onlineStatusManager.isUserOnline(username)) {
+                            user.setStatus(0);
+                            userRepository.save(user);
+                        }
                     });
                 }
             }
